@@ -46,6 +46,7 @@ public class Main {
 		Set<String> forcePropagation = Collections.emptySet();
 		File forcePropagationFile = null;
 		boolean ignoreConflicts = false;
+		boolean renameDuplicates = false;
 		boolean checkPackageAccess = false;
 		boolean fixPackageAccess = false;
 		boolean resolveMissing = false;
@@ -90,6 +91,9 @@ public class Main {
 					break;
 				case "ignoreconflicts":
 					ignoreConflicts = true;
+					break;
+				case "renameduplicates":
+					renameDuplicates = true;
 					break;
 				case "checkpackageaccess":
 					checkPackageAccess = true;
@@ -213,6 +217,7 @@ public class Main {
 				.removeFrames(removeFrames)
 				.ignoreConflicts(ignoreConflicts)
 				.checkPackageAccess(checkPackageAccess)
+				.renameDuplicates(renameDuplicates)
 				.fixPackageAccess(fixPackageAccess)
 				.resolveMissing(resolveMissing)
 				.rebuildSourceFilenames(rebuildSourceFilenames)

@@ -130,6 +130,11 @@ public class TinyRemapper {
 			return this;
 		}
 
+		public Builder renameDuplicates(boolean value) {
+			renameDuplicates = value;
+			return this;
+		}
+
 		public Builder checkPackageAccess(boolean value) {
 			checkPackageAccess = value;
 			return this;
@@ -215,7 +220,7 @@ public class TinyRemapper {
 					keepInputData,
 					forcePropagation, propagatePrivate,
 					propagateBridges, propagateRecordComponents,
-					removeFrames, ignoreConflicts, resolveMissing, checkPackageAccess || fixPackageAccess, fixPackageAccess,
+					removeFrames, ignoreConflicts, resolveMissing, renameDuplicates, checkPackageAccess || fixPackageAccess, fixPackageAccess,
 					rebuildSourceFilenames, skipLocalMapping, renameInvalidLocals, invalidLvNamePattern, inferNameFromSameLvIndex,
 					analyzeVisitors, stateProcessors, preApplyVisitors, postApplyVisitors,
 					extraRemapper);
@@ -234,6 +239,7 @@ public class TinyRemapper {
 		private boolean removeFrames = false;
 		private boolean ignoreConflicts = false;
 		private boolean resolveMissing = false;
+		private boolean renameDuplicates = false;
 		private boolean checkPackageAccess = false;
 		private boolean fixPackageAccess = false;
 		private boolean rebuildSourceFilenames = false;
@@ -272,6 +278,7 @@ public class TinyRemapper {
 			boolean removeFrames,
 			boolean ignoreConflicts,
 			boolean resolveMissing,
+			boolean renameDuplicates,
 			boolean checkPackageAccess,
 			boolean fixPackageAccess,
 			boolean rebuildSourceFilenames,
@@ -284,6 +291,7 @@ public class TinyRemapper {
 		this.ignoreFieldDesc = ignoreFieldDesc;
 		this.threadCount = threadCount > 0 ? threadCount : Math.max(Runtime.getRuntime().availableProcessors(), 2);
 		this.keepInputData = keepInputData;
+		this.renameDuplicates = renameDuplicates;
 		this.threadPool = Executors.newFixedThreadPool(this.threadCount);
 		this.forcePropagation = forcePropagation;
 		this.propagatePrivate = propagatePrivate;
@@ -767,6 +775,7 @@ public class TinyRemapper {
 	private void handleConflicts(MrjState state) {
 		Set<String> testSet = new HashSet<>();
 		boolean targetNameCheckFailed = false;
+		boolean unfixableConflicts = false;
 
 		for (ClassInstance cls : state.classes.values()) {
 			for (MemberInstance member : cls.getMembers()) {
@@ -813,13 +822,30 @@ public class TinyRemapper {
 					}
 
 					System.out.printf("]%s -> %s%n", MemberInstance.getId(anyMember.type, "", anyMember.desc, ignoreFieldDesc), MemberInstance.getNameFromId(anyMember.type, nameDesc, ignoreFieldDesc));
+
+					int mappedMembers = 0;
+					for (int i = 0; i < members.size(); i++) {
+						MemberInstance member = members.get(i);
+						String fullId = member.getOwner().getName()
+							+ "/"
+							+ MemberInstance.getId(member.type, member.name, member.desc, ignoreFieldDesc);
+
+						if (member.type == MemberType.FIELD && fieldMap.containsKey(fullId)
+  						 || member.type == MemberType.METHOD && methodMap.containsKey(fullId)) {
+								mappedMembers++;
+								continue;
+						}
+
+						member.forceSetNewName(member.name + "_" + i);
+					}
+
+					if (mappedMembers > 1)
+						unfixableConflicts = true;
 				}
 			}
 
 			testSet.clear();
 		}
-
-		boolean unfixableConflicts = false;
 
 		if (!conflicts.isEmpty()) {
 			System.out.println("Mapping source name conflicts detected:");
@@ -858,7 +884,7 @@ public class TinyRemapper {
 			}
 		}
 
-		if (!conflicts.isEmpty() && !ignoreConflicts || unfixableConflicts || targetNameCheckFailed) {
+		if (!conflicts.isEmpty() && !ignoreConflicts || unfixableConflicts || (targetNameCheckFailed && !renameDuplicates)) {
 			if (ignoreConflicts || targetNameCheckFailed) System.out.println("There were unfixable conflicts.");
 
 			throw new RuntimeException("Unfixable conflicts");
@@ -1320,6 +1346,7 @@ public class TinyRemapper {
 	private final boolean removeFrames;
 	private final boolean ignoreConflicts;
 	private final boolean resolveMissing;
+	private final boolean renameDuplicates;
 	private final boolean checkPackageAccess;
 	private final boolean fixPackageAccess;
 	private final boolean rebuildSourceFilenames;
