@@ -1284,6 +1284,12 @@ public class TinyRemapper {
 		}
 
 		@Override
+		public ClassVisitor createAsmRemapper(ClassVisitor cv) {
+			return new AsmClassRemapper(cv, remapper, tr.rebuildSourceFilenames, tr.checkPackageAccess,
+				tr.skipLocalMapping, tr.renameInvalidLocals, tr.invalidLvNamePattern, tr.inferNameFromSameLvIndex);
+		}
+
+		@Override
 		public ClassInstance getClass(String internalName) {
 			return classes.get(internalName);
 		}

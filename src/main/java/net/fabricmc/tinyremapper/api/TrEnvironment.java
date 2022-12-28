@@ -18,9 +18,12 @@
 
 package net.fabricmc.tinyremapper.api;
 
+import org.objectweb.asm.ClassVisitor;
+
 public interface TrEnvironment {
 	int getMrjVersion();
 	TrRemapper getRemapper();
+	ClassVisitor createAsmRemapper(ClassVisitor cv);
 
 	/**
 	 * @return the class with the passed name, or null if not found.
